@@ -7,7 +7,15 @@ from pathlib import Path
 from IPython.display import display
 
 from src.carga_datos import cargar_hoja, listar_hojas, resumen_dataframe
-from src.config import PROJECT_NAME, PROJECT_VERSION, SOURCE_SHEET
+from src.config import (
+    JORNADA_OBJETIVO_HORAS,
+    MAX_DIAS_V1,
+    PROJECT_NAME,
+    PROJECT_VERSION,
+    SOLVER_TIME_LIMIT_SECONDS,
+    SOURCE_SHEET,
+)
+from src.modelo_v1 import programar_v1
 from src.normalizacion import diagnosticar_datos, normalizar_datos, tabla_calidad
 from src.paths import SOURCE_EXCEL_PATH
 from src.validacion import validar_dataframe_no_vacio
@@ -17,7 +25,7 @@ def ejecutar_diagnostico():
     """Carga, normaliza y diagnostica el archivo fuente."""
     print("=" * 70)
     print(f"{PROJECT_NAME} | versión {PROJECT_VERSION}")
-    print("FASE ACTUAL: carga, normalización y diagnóstico")
+    print("FASE 1: carga, normalización y diagnóstico")
     print("=" * 70)
 
     ruta = Path(SOURCE_EXCEL_PATH)
@@ -55,21 +63,63 @@ def ejecutar_diagnostico():
     for auditor, cantidad in diagnostico["auditores"].items():
         print(f"  {auditor}: {cantidad}")
 
-    print("\nCALIDAD DE DATOS POR COLUMNA")
-    display(tabla_calidad(df_norm))
-
-    print("\nDATOS NORMALIZADOS — PRIMEROS 10 REGISTROS")
-    display(df_norm.head(10))
-
-    print("\n" + "=" * 70)
-    print("EJECUCIÓN COMPLETADA CORRECTAMENTE")
-    print("=" * 70)
-
     return df_norm
 
 
+def ejecutar_programacion(df_norm):
+    """Ejecuta y muestra el modelo V1."""
+    print("\n" + "=" * 70)
+    print("FASE 2 — PROGRAMADOR V1 POR PAREJAS")
+    print("=" * 70)
+    print("Supuestos de esta versión:")
+    print("  • Jornada objetivo: 8 h; excedente permitido y penalizado.")
+    print("  • Física: responsable + 1 acompañante.")
+    print("  • Proyecto: responsable obligatorio.")
+    print("  • Parejas diarias coherentes.")
+    print("  • Cercanía por Haversine.")
+    print("  • Proyecto antes de Física dentro de la lógica diaria.")
+    print("  • Sin tiempos de traslado ni vehículos todavía.\n")
+
+    resultado = programar_v1(
+        df_norm,
+        max_dias=MAX_DIAS_V1,
+        jornada_objetivo_horas=JORNADA_OBJETIVO_HORAS,
+        limite_segundos_por_etapa=SOLVER_TIME_LIMIT_SECONDS,
+    )
+
+    print("RESULTADO DEL MODELO")
+    print("-" * 50)
+    print(f"Estado: {resultado.estado}")
+    print(f"Días utilizados: {resultado.dias_usados}")
+    print(f"Horas extra totales: {resultado.horas_extra_totales:.1f}")
+    print(
+        "Auditor-día usado solo como apoyo: "
+        f"{resultado.apoyos_sin_actividad_propia}"
+    )
+    print(
+        "Distancia de emparejamiento acumulada: "
+        f"{resultado.distancia_emparejamiento_km:.2f} km"
+    )
+
+    print("\nEQUIPOS POR DÍA")
+    display(resultado.equipos)
+
+    print("\nCARGA POR AUDITOR Y DÍA")
+    display(resultado.cargas)
+
+    print("\nPROGRAMACIÓN DE ACTIVIDADES")
+    display(resultado.programacion)
+
+    return resultado
+
+
 def main():
-    ejecutar_diagnostico()
+    df_norm = ejecutar_diagnostico()
+    ejecutar_programacion(df_norm)
+
+    print("\n" + "=" * 70)
+    print("EJECUCIÓN COMPLETADA")
+    print("=" * 70)
 
 
 if __name__ == "__main__":
