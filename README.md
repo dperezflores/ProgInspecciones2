@@ -54,3 +54,21 @@ ProgInspecciones2/
 - **GitHub:** código fuente y control de versiones.
 - **Google Drive:** archivo Excel de entrada.
 - **Google Colab:** ejecución, pruebas y visualización.
+
+
+## Notebook operativo
+
+A partir de la Fase 2, el notebook de uso normal es:
+
+```text
+notebooks/ProgInspecciones2_COLAB.ipynb
+```
+
+Este notebook contiene una sola celda de ejecución. Cada vez que se ejecuta:
+
+1. monta Google Drive;
+2. clona o actualiza el repositorio con `git pull`;
+3. instala las dependencias;
+4. ejecuta `run_pipeline.py`.
+
+Por lo tanto, los cambios futuros se realizan principalmente en los archivos del repositorio y no requieren editar manualmente el notebook.
