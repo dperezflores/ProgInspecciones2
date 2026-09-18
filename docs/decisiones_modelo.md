@@ -58,6 +58,7 @@ Fase 2 — definición del programador básico.
 - Si una pareja tiene Proyecto e Inspección Física, se debe preferir el orden Proyecto → Física.
 - Este orden es una preferencia, no una restricción absoluta.
 - Si ambos auditores tienen Proyecto, pueden revisar sus respectivos proyectos durante ese periodo.
+- Para esta versión se asume que las actividades de tipo Proyecto se realizan en la misma ubicación común, por lo que pueden ejecutarse en paralelo sin romper la coherencia logística de la pareja.
 - Si solo uno tiene Proyecto, el otro puede apoyarlo en esa revisión como caso especial.
 - Posteriormente pueden continuar juntos con una inspección Física compatible.
 
