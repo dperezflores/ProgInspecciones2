@@ -20,9 +20,7 @@ from src.normalizacion import diagnosticar_datos, normalizar_datos, tabla_calida
 from src.paths import SOURCE_EXCEL_PATH
 from src.salidas import (
     exportar_programacion_csv,
-    grafica_actividades_por_dia,
-    grafica_carga_auditores,
-    grafica_ubicaciones_por_dia,
+    generar_graficos_en_drive,
     mostrar_resumen_diario,
 )
 from src.validacion import validar_dataframe_no_vacio
@@ -135,9 +133,13 @@ def ejecutar_programacion(df_norm):
     print(ruta_csv)
 
     print("\nVISUALIZACIONES")
-    grafica_actividades_por_dia(resultado.programacion)
-    grafica_carga_auditores(resultado.cargas)
-    grafica_ubicaciones_por_dia(resultado.programacion)
+    rutas_graficos = generar_graficos_en_drive(
+        resultado.programacion,
+        resultado.cargas,
+        SOURCE_EXCEL_PATH,
+    )
+    for ruta in rutas_graficos:
+        print(ruta)
 
     validacion = validar_resultado_v1(
         df_norm,
