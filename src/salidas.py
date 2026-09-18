@@ -27,8 +27,11 @@ def exportar_programacion_csv(
     return ruta_salida
 
 
-def grafica_actividades_por_dia(programacion: pd.DataFrame) -> None:
-    """Muestra número de actividades por día y tipo."""
+def grafica_actividades_por_dia(
+    programacion: pd.DataFrame,
+    ruta_salida: str | Path | None = None,
+) -> Path | None:
+    """Genera gráfico de actividades por día y opcionalmente lo guarda."""
     tabla = (
         programacion
         .assign(tipo=programacion["tipo"].astype(str))
@@ -45,13 +48,21 @@ def grafica_actividades_por_dia(programacion: pd.DataFrame) -> None:
     ax.legend(title="Tipo")
     plt.xticks(rotation=0)
     plt.tight_layout()
-    plt.show()
+    ruta = None
+    if ruta_salida is not None:
+        ruta = Path(ruta_salida)
+        ax.figure.savefig(ruta, dpi=150, bbox_inches="tight")
+    plt.close(ax.figure)
+    return ruta
 
 
-def grafica_carga_auditores(cargas: pd.DataFrame) -> None:
+def grafica_carga_auditores(
+    cargas: pd.DataFrame,
+    ruta_salida: str | Path | None = None,
+) -> Path | None:
     """Muestra una matriz auditor x día con carga diaria en horas."""
     if cargas.empty:
-        return
+        return None
 
     matriz = (
         cargas
@@ -83,13 +94,21 @@ def grafica_carga_auditores(cargas: pd.DataFrame) -> None:
 
     fig.colorbar(im, ax=ax, label="Horas")
     plt.tight_layout()
-    plt.show()
+    ruta = None
+    if ruta_salida is not None:
+        ruta = Path(ruta_salida)
+        fig.savefig(ruta, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return ruta
 
 
-def grafica_ubicaciones_por_dia(programacion: pd.DataFrame) -> None:
+def grafica_ubicaciones_por_dia(
+    programacion: pd.DataFrame,
+    ruta_salida: str | Path | None = None,
+) -> Path | None:
     """Muestra la distribución geográfica aproximada de actividades por día."""
     if programacion.empty:
-        return
+        return None
 
     fig, ax = plt.subplots(figsize=(9, 7))
 
@@ -107,7 +126,36 @@ def grafica_ubicaciones_por_dia(programacion: pd.DataFrame) -> None:
     ax.legend(title="Programación", bbox_to_anchor=(1.02, 1), loc="upper left")
     ax.grid(True, alpha=0.25)
     plt.tight_layout()
-    plt.show()
+    ruta = None
+    if ruta_salida is not None:
+        ruta = Path(ruta_salida)
+        fig.savefig(ruta, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return ruta
+
+
+def generar_graficos_en_drive(
+    programacion: pd.DataFrame,
+    cargas: pd.DataFrame,
+    ruta_excel_fuente: str,
+) -> list[Path]:
+    """Genera los gráficos PNG junto al Excel fuente."""
+    carpeta = Path(ruta_excel_fuente).parent
+    rutas = [
+        grafica_actividades_por_dia(
+            programacion,
+            carpeta / "GRAFICA_ACTIVIDADES_POR_DIA.png",
+        ),
+        grafica_carga_auditores(
+            cargas,
+            carpeta / "GRAFICA_CARGA_AUDITORES.png",
+        ),
+        grafica_ubicaciones_por_dia(
+            programacion,
+            carpeta / "GRAFICA_UBICACIONES_POR_DIA.png",
+        ),
+    ]
+    return [r for r in rutas if r is not None]
 
 
 def mostrar_resumen_diario(
