@@ -53,6 +53,26 @@ def _clean_text(value: Any) -> Any:
     return value
 
 
+def _parse_fecha(value: Any) -> pd.Timestamp:
+    """Convierte fechas de Excel o texto sin generar advertencias de formato."""
+    if pd.isna(value):
+        return pd.NaT
+
+    if isinstance(value, (pd.Timestamp, np.datetime64)):
+        return pd.to_datetime(value, errors="coerce")
+
+    clean = _clean_text(value)
+    if pd.isna(clean):
+        return pd.NaT
+
+    return pd.to_datetime(
+        clean,
+        errors="coerce",
+        format="mixed",
+        dayfirst=True,
+    )
+
+
 def _parse_importe(value: Any) -> float:
     """Convierte importes a número; los valores no informados quedan como NaN."""
     if pd.isna(value):
@@ -100,11 +120,7 @@ def normalizar_datos(df: pd.DataFrame) -> pd.DataFrame:
     for column in text_columns:
         out[column] = out[column].map(_clean_text)
 
-    out["fecha_contrato"] = pd.to_datetime(
-        out["fecha_contrato"].map(_clean_text),
-        errors="coerce",
-        dayfirst=True,
-    )
+    out["fecha_contrato"] = out["fecha_contrato"].map(_parse_fecha)
 
     out["importe_contratado"] = out["importe_contratado"].map(_parse_importe)
 
