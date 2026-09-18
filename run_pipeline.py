@@ -18,6 +18,13 @@ from src.config import (
 from src.modelo_v1 import programar_v1
 from src.normalizacion import diagnosticar_datos, normalizar_datos, tabla_calidad
 from src.paths import SOURCE_EXCEL_PATH
+from src.salidas import (
+    exportar_programacion_csv,
+    grafica_actividades_por_dia,
+    grafica_carga_auditores,
+    grafica_ubicaciones_por_dia,
+    mostrar_resumen_diario,
+)
 from src.validacion import validar_dataframe_no_vacio
 from src.validacion_programacion import validar_resultado_v1
 
@@ -108,8 +115,29 @@ def ejecutar_programacion(df_norm):
     print("\nCARGA POR AUDITOR Y DÍA")
     display(resultado.cargas)
 
+    print("\nRESUMEN DIARIO")
+    resumen_diario = mostrar_resumen_diario(
+        resultado.programacion,
+        resultado.equipos,
+        resultado.cargas,
+    )
+    display(resumen_diario)
+
     print("\nPROGRAMACIÓN DE ACTIVIDADES")
     display(resultado.programacion)
+
+    ruta_csv = exportar_programacion_csv(
+        resultado.programacion,
+        SOURCE_EXCEL_PATH,
+    )
+    print("\nCSV GENERADO")
+    print("-" * 50)
+    print(ruta_csv)
+
+    print("\nVISUALIZACIONES")
+    grafica_actividades_por_dia(resultado.programacion)
+    grafica_carga_auditores(resultado.cargas)
+    grafica_ubicaciones_por_dia(resultado.programacion)
 
     validacion = validar_resultado_v1(
         df_norm,
