@@ -19,6 +19,7 @@ from src.modelo_v1 import programar_v1
 from src.normalizacion import diagnosticar_datos, normalizar_datos, tabla_calidad
 from src.paths import SOURCE_EXCEL_PATH
 from src.validacion import validar_dataframe_no_vacio
+from src.validacion_programacion import validar_resultado_v1
 
 
 def ejecutar_diagnostico():
@@ -109,6 +110,32 @@ def ejecutar_programacion(df_norm):
 
     print("\nPROGRAMACIÓN DE ACTIVIDADES")
     display(resultado.programacion)
+
+    validacion = validar_resultado_v1(
+        df_norm,
+        resultado.programacion,
+        resultado.equipos,
+    )
+
+    print("\nVALIDACIÓN AUTOMÁTICA")
+    print("-" * 50)
+    if validacion["valido"]:
+        print("✓ Programación estructuralmente válida.")
+        print(
+            f"✓ Actividades programadas: "
+            f"{validacion['actividades_programadas']}"
+        )
+        print(
+            f"✓ Físicas con acompañante: "
+            f"{validacion['fisicas_con_acompanante']}"
+        )
+    else:
+        print("✗ Se detectaron inconsistencias:")
+        for error in validacion["errores"]:
+            print(f"  - {error}")
+        raise RuntimeError(
+            "La solución del solver no superó la validación automática."
+        )
 
     return resultado
 
