@@ -10,6 +10,7 @@ No considera tiempos de traslado ni vehículos.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from math import asin, cos, radians, sin, sqrt
 from typing import Dict, Iterable, List, Tuple
 
@@ -85,6 +86,117 @@ def _resolver_lexicografico(
 
     return ultimo_solver, valores, estado_final
 
+
+
+def _asignar_horarios(
+    programacion: pd.DataFrame,
+    equipos: pd.DataFrame,
+    hora_inicio_dia: str = "10:00",
+) -> pd.DataFrame:
+    """Asigna horas de inicio y fin coherentes con la lógica V1.
+
+    Reglas:
+    - La jornada comienza a las 10:00.
+    - Los proyectos se programan primero.
+    - Si ambos miembros de una pareja tienen proyectos, se ejecutan en paralelo.
+    - Las físicas de la pareja comienzan cuando termina la fase de proyectos
+      y se ejecutan secuencialmente porque requieren a ambos auditores.
+    - No se agregan tiempos de traslado en esta versión.
+    """
+    df = programacion.copy()
+    df["hora_inicio"] = pd.NA
+    df["hora_fin"] = pd.NA
+
+    base = datetime.strptime(hora_inicio_dia, "%H:%M")
+
+    for dia in sorted(df["dia"].unique()):
+        dia_df = df[df["dia"] == dia]
+
+        parejas_dia = []
+        if not equipos.empty:
+            equipos_dia = equipos[equipos["dia"] == dia]
+            parejas_dia = [
+                (str(r["auditor_1"]), str(r["auditor_2"]))
+                for _, r in equipos_dia.iterrows()
+            ]
+
+        auditores_emparejados = set()
+
+        for a, b in parejas_dia:
+            auditores_emparejados.update([a, b])
+
+            fin_proyectos = {}
+
+            for auditor in [a, b]:
+                cursor = base
+                proyectos_idx = dia_df[
+                    (dia_df["responsable"].astype(str) == auditor)
+                    & (
+                        dia_df["tipo"]
+                        .astype(str)
+                        .str.lower()
+                        .str.startswith("p")
+                    )
+                ].sort_values(["id_obra"]).index.tolist()
+
+                for idx in proyectos_idx:
+                    duracion = float(df.at[idx, "duracion_horas"])
+                    inicio = cursor
+                    fin = inicio + timedelta(hours=duracion)
+                    df.at[idx, "hora_inicio"] = inicio.strftime("%H:%M")
+                    df.at[idx, "hora_fin"] = fin.strftime("%H:%M")
+                    cursor = fin
+
+                fin_proyectos[auditor] = cursor
+
+            cursor_fisicas = max(fin_proyectos.get(a, base), fin_proyectos.get(b, base))
+
+            fisicas_idx = dia_df[
+                (
+                    dia_df["responsable"].astype(str).isin([a, b])
+                )
+                & (
+                    dia_df["tipo"]
+                    .astype(str)
+                    .str.lower()
+                    .str.startswith("f")
+                )
+            ].sort_values(
+                ["responsable", "id_obra"],
+                kind="stable",
+            ).index.tolist()
+
+            for idx in fisicas_idx:
+                duracion = float(df.at[idx, "duracion_horas"])
+                inicio = cursor_fisicas
+                fin = inicio + timedelta(hours=duracion)
+                df.at[idx, "hora_inicio"] = inicio.strftime("%H:%M")
+                df.at[idx, "hora_fin"] = fin.strftime("%H:%M")
+                cursor_fisicas = fin
+
+        # Auditores no emparejados: en V1 solo deberían tener proyectos.
+        for auditor in sorted(
+            set(dia_df["responsable"].astype(str)) - auditores_emparejados
+        ):
+            cursor = base
+            idxs = dia_df[
+                dia_df["responsable"].astype(str) == auditor
+            ].sort_values(
+                ["tipo", "id_obra"],
+                kind="stable",
+            ).index.tolist()
+
+            for idx in idxs:
+                if pd.notna(df.at[idx, "hora_inicio"]):
+                    continue
+                duracion = float(df.at[idx, "duracion_horas"])
+                inicio = cursor
+                fin = inicio + timedelta(hours=duracion)
+                df.at[idx, "hora_inicio"] = inicio.strftime("%H:%M")
+                df.at[idx, "hora_fin"] = fin.strftime("%H:%M")
+                cursor = fin
+
+    return df
 
 def programar_v1(
     df: pd.DataFrame,
@@ -467,6 +579,35 @@ def programar_v1(
     program_df = (
         pd.DataFrame(program_rows)
         .sort_values(["dia", "tipo", "responsable", "id_obra"], kind="stable")
+        .reset_index(drop=True)
+    )
+
+    program_df = _asignar_horarios(
+        program_df,
+        equipos_df,
+        hora_inicio_dia="10:00",
+    )
+
+    columnas = [
+        "dia",
+        "hora_inicio",
+        "hora_fin",
+        "id_obra",
+        "contrato",
+        "tipo",
+        "duracion_horas",
+        "responsable",
+        "acompanante",
+        "obra_servicio",
+        "latitud",
+        "longitud",
+    ]
+    program_df = (
+        program_df[columnas]
+        .sort_values(
+            ["dia", "hora_inicio", "responsable", "id_obra"],
+            kind="stable",
+        )
         .reset_index(drop=True)
     )
 
